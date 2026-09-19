@@ -5,8 +5,7 @@ import {
     REST,
     Routes,
     SlashCommandBuilder,
-    Partials,
-    type GuildMember, EmbedBuilder,
+    Partials, EmbedBuilder,
 } from "discord.js";
 import "dotenv/config";
 
@@ -135,17 +134,17 @@ const getServerChannels = () => {
     );
 };
 
-const saveMemberData = async (
-    member: GuildMember,
-): Promise<void> => {
-    await setData({
-        guildId: member.guild.id,
-        userId: member.user.id,
-        username: member.user.username,
-        displayName: member.displayName,
-        joinedAt: member.joinedAt ?? new Date(),
-    });
-};
+// const saveMemberData = async (
+//     member: GuildMember,
+// ): Promise<void> => {
+//     await setData({
+//         guildId: member.guild.id,
+//         userId: member.user.id,
+//         username: member.user.username,
+//         displayName: member.displayName,
+//         joinedAt: member.joinedAt ?? new Date(),
+//     });
+// };
 
 const syncExistingMembers = async (): Promise<void> => {
     console.info("🔄 Starting members sync...");
@@ -197,7 +196,7 @@ const syncExistingMembers = async (): Promise<void> => {
             continue;
         }
 
-        await saveMemberData(member);
+        // await saveMemberData(member);
     }
 
     console.info(
@@ -309,11 +308,11 @@ async function handleCommand(
                 ephemeral: true,
             });
 
-            await updateNickname(
-                guildId,
-                interaction.member.id,
-                nickname,
-            );
+            // await updateNickname(
+            //     guildId,
+            //     interaction.member.id,
+            //     nickname,
+            // );
 
             await sendMessageToChannel(
                 NICKNAME_CHANEL,
@@ -338,7 +337,7 @@ async function handleCommand(
             await interaction.member.roles.remove(NOT_VERIFIED_USER_ROLE);
             await interaction.member.roles.add(VERIFIED_USER_ROLE);
 
-            await updateNickname(guildId, interaction.member.id, nickname)
+            // await updateNickname(guildId, interaction.member.id, nickname)
 
             await interaction.reply({
                 content: `Ник ${nickname} успешно установлен \n -------------------------`,
@@ -351,94 +350,94 @@ async function handleCommand(
             sendMessageToChannel(LOG_CHANNEL, msg);
 
             return;
-        case "stats": {
-            const memberData = await getData(
-                guildId || "",
-                member.id,
-            );
-
-            if (!memberData) {
-                await interaction.reply({
-                    content: "❌ Данные пользователя не найдены.",
-                    ephemeral: true,
-                });
-
-                return;
-            }
-
-            const joinedAt = memberData.joinedAt
-                ? new Date(memberData.joinedAt)
-                : null;
-
-            const joinedText = joinedAt
-                ? `${joinedAt.toLocaleDateString("ru-RU")} (${getTimePassed(joinedAt)})`
-                : "Неизвестно";
-
-            const exp = Number(memberData.exp ?? 0);
-            const level = memberData.level ?? 1;
-
-            const expForCurrentLevel =
-                level * (level - 1) * 50;
-
-            const expForNextLevel =
-                level * (level + 1) * 50;
-
-            const currentXp = Math.max(
-                0,
-                exp - expForCurrentLevel,
-            );
-
-            const requiredXp =
-                expForNextLevel - expForCurrentLevel;
-
-            const progress = Math.min(
-                Math.max(currentXp / requiredXp, 0),
-                1,
-            );
-
-            const percent = Math.round(progress * 100);
-
-            const progressSize = 12;
-            const filled = Math.round(
-                progress * progressSize,
-            );
-
-            const progressBar =
-                "🟩".repeat(filled) +
-                "⬛".repeat(progressSize - filled);
-
-            const embed = new EmbedBuilder()
-                .setColor('#2ecc71')
-                .setTitle("👤 Статистика Окуня")
-                .setDescription(
-                    `**Окунь:** ${memberData.displayName ?? member.user.username}\n` +
-                    `**Ник:** \`${memberData.nickname ?? "Не установлен"}\`\n` +
-                    `**На сервере с:** ${joinedText}\n\n` +
-
-                    `⭐ **Окунь:** ${level} Уровня\n` +
-                    `${progressBar} **${percent}%**\n` +
-                    `✨ **XP:** ${currentXp.toFixed(1)} / ${requiredXp}\n` +
-                    `📈 **Всего XP:** ${exp.toFixed(1)}`,
-                )
-                .setThumbnail(
-                    member.user.displayAvatarURL({
-                        size: 256,
-                    }),
-                )
-                .setTimestamp();
-
-            await interaction.reply({
-                embeds: [embed],
-                ephemeral: true,
-            });
-
-            sendMessageToChannel(
-                LOG_CHANNEL,
-                `<@${member.id}> запросил статистику`,
-            );
-
-            return;
-        }
+        // case "stats": {
+        //     const memberData = await getData(
+        //         guildId || "",
+        //         member.id,
+        //     );
+        //
+        //     if (!memberData) {
+        //         await interaction.reply({
+        //             content: "❌ Данные пользователя не найдены.",
+        //             ephemeral: true,
+        //         });
+        //
+        //         return;
+        //     }
+        //
+        //     const joinedAt = memberData.joinedAt
+        //         ? new Date(memberData.joinedAt)
+        //         : null;
+        //
+        //     const joinedText = joinedAt
+        //         ? `${joinedAt.toLocaleDateString("ru-RU")} (${getTimePassed(joinedAt)})`
+        //         : "Неизвестно";
+        //
+        //     const exp = Number(memberData.exp ?? 0);
+        //     const level = memberData.level ?? 1;
+        //
+        //     const expForCurrentLevel =
+        //         level * (level - 1) * 50;
+        //
+        //     const expForNextLevel =
+        //         level * (level + 1) * 50;
+        //
+        //     const currentXp = Math.max(
+        //         0,
+        //         exp - expForCurrentLevel,
+        //     );
+        //
+        //     const requiredXp =
+        //         expForNextLevel - expForCurrentLevel;
+        //
+        //     const progress = Math.min(
+        //         Math.max(currentXp / requiredXp, 0),
+        //         1,
+        //     );
+        //
+        //     const percent = Math.round(progress * 100);
+        //
+        //     const progressSize = 12;
+        //     const filled = Math.round(
+        //         progress * progressSize,
+        //     );
+        //
+        //     const progressBar =
+        //         "🟩".repeat(filled) +
+        //         "⬛".repeat(progressSize - filled);
+        //
+        //     const embed = new EmbedBuilder()
+        //         .setColor('#2ecc71')
+        //         .setTitle("👤 Статистика Окуня")
+        //         .setDescription(
+        //             `**Окунь:** ${memberData.displayName ?? member.user.username}\n` +
+        //             `**Ник:** \`${memberData.nickname ?? "Не установлен"}\`\n` +
+        //             `**На сервере с:** ${joinedText}\n\n` +
+        //
+        //             `⭐ **Окунь:** ${level} Уровня\n` +
+        //             `${progressBar} **${percent}%**\n` +
+        //             `✨ **XP:** ${currentXp.toFixed(1)} / ${requiredXp}\n` +
+        //             `📈 **Всего XP:** ${exp.toFixed(1)}`,
+        //         )
+        //         .setThumbnail(
+        //             member.user.displayAvatarURL({
+        //                 size: 256,
+        //             }),
+        //         )
+        //         .setTimestamp();
+        //
+        //     await interaction.reply({
+        //         embeds: [embed],
+        //         ephemeral: true,
+        //     });
+        //
+        //     sendMessageToChannel(
+        //         LOG_CHANNEL,
+        //         `<@${member.id}> запросил статистику`,
+        //     );
+        //
+        //     return;
+        // }
         default:
             await interaction.reply({
                 content: "Данной команды не существует",
@@ -451,7 +450,7 @@ client.once("clientReady", async (readyClient) => {
     console.info(`Logged in as ${readyClient.user.tag}.`);
 
     try {
-        await initDb();
+        // await initDb();
 
         SERVER_ROLES = getServerRoles();
         SERVER_CHANNELS = getServerChannels();
@@ -466,7 +465,7 @@ client.once("clientReady", async (readyClient) => {
     } catch (error) {
         console.error("Failed to initialize bot.", error);
 
-        await closeDb();
+        // await closeDb();
         await readyClient.destroy();
 
         process.exitCode = 1;
@@ -476,7 +475,7 @@ client.once("clientReady", async (readyClient) => {
 client.on("guildMemberAdd", async (member) => {
     // Save member
     try {
-        await saveMemberData(member);
+        // await saveMemberData(member);
 
         console.info(
             `[MEMBER JOIN] Saved ${member.user.tag} (${member.user.id}) to DB.`,
