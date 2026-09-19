@@ -14,7 +14,6 @@ import {setData, getData, updateNickname} from "./db/discord-users";
 import {initDb, closeDb} from "./db";
 import {giveXp} from "./services/xp.service";
 import {XP_REWARDS} from "./config/experience";
-// import {connectToVoice} from "./voice/voiceManager";
 
 const voiceSessions = new Map<string, NodeJS.Timeout>();
 
