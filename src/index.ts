@@ -14,8 +14,6 @@ import {initDb, closeDb} from "./db";
 import {giveXp} from "./services/xp.service";
 import {XP_REWARDS} from "./config/experience";
 
-const voiceSessions = new Map<string, NodeJS.Timeout>();
-
 const token = process.env.DISCORD_TOKEN;
 const guildId = process.env.DISCORD_GUILD_ID;
 
@@ -95,7 +93,6 @@ const client = new Client({
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.GuildMessageReactions,
-        GatewayIntentBits.GuildVoiceStates,
     ],
     partials: [
         Partials.Message,
@@ -222,27 +219,27 @@ const sendMessageToChannel = async (channelId: string, message: string) => {
     }
 };
 
-const getTimePassed = (date) => {
-    const diff = Date.now() - date.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-    if (days >= 365) {
-        const years = Math.floor(days / 365);
-        return `${years} ${years === 1 ? "год" : years < 5 ? "года" : "лет"}`;
-    }
-
-    if (days >= 30) {
-        const months = Math.floor(days / 30);
-        return `${months} ${months === 1 ? "месяц" : months < 5 ? "месяца" : "месяцев"}`;
-    }
-
-    if (days >= 7) {
-        const weeks = Math.floor(days / 7);
-        return `${weeks} ${weeks === 1 ? "неделя" : weeks < 5 ? "недели" : "недель"}`;
-    }
-
-    return `${days} ${days === 1 ? "день" : days < 5 ? "дня" : "дней"}`;
-};
+// const getTimePassed = (date) => {
+//     const diff = Date.now() - date.getTime();
+//     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+//
+//     if (days >= 365) {
+//         const years = Math.floor(days / 365);
+//         return `${years} ${years === 1 ? "год" : years < 5 ? "года" : "лет"}`;
+//     }
+//
+//     if (days >= 30) {
+//         const months = Math.floor(days / 30);
+//         return `${months} ${months === 1 ? "месяц" : months < 5 ? "месяца" : "месяцев"}`;
+//     }
+//
+//     if (days >= 7) {
+//         const weeks = Math.floor(days / 7);
+//         return `${weeks} ${weeks === 1 ? "неделя" : weeks < 5 ? "недели" : "недель"}`;
+//     }
+//
+//     return `${days} ${days === 1 ? "день" : days < 5 ? "дня" : "дней"}`;
+// };
 
 async function registerCommands(): Promise<void> {
     if (!client.user || !client.application) {
@@ -561,28 +558,28 @@ client.on("interactionCreate", async (interaction) => {
         return;
     }
 
-    if (interaction.guild) {
-        const result = await giveXp(
-            interaction.guild.id,
-            interaction.user.id,
-            "COMMAND",
-        );
-
-        if (result?.leveledUp) {
-            const embed = new EmbedBuilder()
-                .setColor('#2ecc71')
-                .setTitle("🐟 Окунь повысил уровень!")
-                .setDescription(
-                    `<@${interaction.user.displayName}>\n\n` +
-                    `⭐ **${result.oldLevel}** → **${result.newLevel}**`,
-                );
-
-            await interaction.followUp({
-                embeds: [embed],
-                ephemeral: true,
-            });
-        }
-    }
+    // if (interaction.guild) {
+    //     const result = await giveXp(
+    //         interaction.guild.id,
+    //         interaction.user.id,
+    //         "COMMAND",
+    //     );
+    //
+    //     if (result?.leveledUp) {
+    //         const embed = new EmbedBuilder()
+    //             .setColor('#2ecc71')
+    //             .setTitle("🐟 Окунь повысил уровень!")
+    //             .setDescription(
+    //                 `<@${interaction.user.displayName}>\n\n` +
+    //                 `⭐ **${result.oldLevel}** → **${result.newLevel}**`,
+    //             );
+    //
+    //         await interaction.followUp({
+    //             embeds: [embed],
+    //             ephemeral: true,
+    //         });
+    //     }
+    // }
 
     if (!interaction.inCachedGuild()) {
         await interaction.reply({
@@ -621,307 +618,85 @@ client.on("messageCreate", async (message) => {
         return;
     }
 
-    const result = await giveXp(
-        message.guild.id,
-        message.author.id,
-        "MESSAGE",
-    );
-
-    if (result?.leveledUp) {
-        const embed = new EmbedBuilder()
-            .setColor('#2ecc71')
-            .setTitle("🐟 Окунь повысил уровень!")
-            .setDescription(
-                `<@${message.author.displayName}>\n\n` +
-                `⭐ **${result.oldLevel}** → **${result.newLevel}**`,
-            );
-
-        await message.channel.send({
-            embeds: [embed],
-        });
-    }
+    // const result = await giveXp(
+    //     message.guild.id,
+    //     message.author.id,
+    //     "MESSAGE",
+    // );
+    //
+    // if (result?.leveledUp) {
+    //     const embed = new EmbedBuilder()
+    //         .setColor('#2ecc71')
+    //         .setTitle("🐟 Окунь повысил уровень!")
+    //         .setDescription(
+    //             `<@${message.author.displayName}>\n\n` +
+    //             `⭐ **${result.oldLevel}** → **${result.newLevel}**`,
+    //         );
+    //
+    //     await message.channel.send({
+    //         embeds: [embed],
+    //     });
+    // }
 });
-
-client.on(
-    "voiceStateUpdate",
-    async (oldState, newState) => {
-        const userId = newState.id;
-        const guildId = newState.guild.id;
-        const member = newState.member;
-
-        const key =
-            `${guildId}:${userId}`;
-
-        const username =
-            member?.displayName ??
-            member?.user.username ??
-            userId;
-
-        if (member?.user.bot) {
-            return;
-        }
-
-        if (
-            !oldState.channelId &&
-            newState.channelId
-        ) {
-            const channel =
-                newState.channel;
-
-            if (
-                !channel ||
-                !channel.isVoiceBased()
-            ) {
-                return;
-            }
-
-            console.log(
-                `\n🎙️ [VOICE JOIN] ${username} (${userId})`,
-            );
-
-            console.log(
-                `   └─ Channel: ${channel.name}`,
-            );
-
-            if (
-                voiceSessions.has(
-                    key,
-                )
-            ) {
-                console.log(
-                    `⚠️ [VOICE XP] Session already exists → ${username}`,
-                );
-
-                return;
-            }
-
-            voiceSessions.set(
-                key,
-                Date.now(),
-            );
-
-            console.log(
-                `⏱️ [VOICE XP] Session started → ${username}`,
-            );
-
-            const timer =
-                setInterval(
-                    async () => {
-                        try {
-                            const currentMember =
-                                await newState
-                                    .guild
-                                    .members
-                                    .fetch(
-                                        userId,
-                                    )
-                                    .catch(
-                                        () =>
-                                            null,
-                                    );
-
-                            // User left voice
-                            if (
-                                !currentMember ||
-                                !currentMember
-                                    .voice
-                                    .channelId
-                            ) {
-                                clearInterval(
-                                    timer,
-                                );
-
-                                voiceSessions.delete(
-                                    key,
-                                );
-
-                                console.log(
-                                    `🚪 [VOICE XP] Session stopped → ${username}`,
-                                );
-
-                                return;
-                            }
-
-                            const xp =
-                                XP_REWARDS
-                                    .VOICE_MINUTE;
-
-                            const result =
-                                await giveXp(
-                                    guildId,
-                                    userId,
-                                    "VOICE_MINUTE",
-                                    xp,
-                                );
-
-                            console.log(
-                                `⭐ [VOICE XP] ${username} → +${xp} XP`,
-                            );
-
-                            if (
-                                result?.leveledUp
-                            ) {
-                                const systemChannel =
-                                    newState
-                                        .guild
-                                        .systemChannel;
-
-                                if (
-                                    systemChannel
-                                ) {
-                                    const embed =
-                                        new EmbedBuilder()
-                                            .setColor(
-                                                "#2ecc71",
-                                            )
-                                            .setDescription(
-                                                `🐟 Окунь <@${userId}> **повысил уровень!**\n\n` +
-                                                `⭐ **${result.oldLevel} → ${result.newLevel}**`,
-                                            );
-
-                                    await systemChannel.send(
-                                        {
-                                            embeds: [
-                                                embed,
-                                            ],
-                                        },
-                                    );
-                                }
-                            }
-                        } catch (error) {
-                            console.error(
-                                `❌ [VOICE XP ERROR] ${username} (${userId})`,
-                                error,
-                            );
-                        }
-                    },
-                    60_000,
-                );
-
-            voiceSessions.set(
-                key,
-                timer,
-            );
-
-            return;
-        }
-
-        if (
-            oldState.channelId &&
-            !newState.channelId
-        ) {
-            const timer =
-                voiceSessions.get(
-                    key,
-                );
-
-            if (
-                timer &&
-                typeof timer !==
-                "number"
-            ) {
-                clearInterval(
-                    timer,
-                );
-            }
-
-            voiceSessions.delete(
-                key,
-            );
-
-            console.log(
-                `\n🚪 [VOICE LEAVE] ${username} (${userId})`,
-            );
-
-            console.log(
-                `   └─ Channel: ${
-                    oldState.channel?.name ??
-                    oldState.channelId
-                }`,
-            );
-
-            return;
-        }
-
-        if (
-            oldState.channelId &&
-            newState.channelId &&
-            oldState.channelId !==
-            newState.channelId
-        ) {
-            console.log(
-                `\n🔄 [VOICE MOVE] ${username} (${userId})`,
-            );
-
-            console.log(
-                `   └─ ${
-                    oldState.channel?.name ??
-                    oldState.channelId
-                } → ${
-                    newState.channel?.name ??
-                    newState.channelId
-                }`,
-            );
-
-            return;
-        }
-    },
-);
-
-client.on("messageReactionAdd", async (reaction, user) => {
-    if (user.bot) {
-        return;
-    }
-
-    try {
-        if (reaction.partial) {
-            await reaction.fetch();
-        }
-
-        const guild = reaction.message.guild;
-
-        if (!guild) {
-            return;
-        }
-
-        const result = await giveXp(
-            guild.id,
-            user.id,
-            "REACTION",
-        );
-
-        if (!result) {
-            return;
-        }
-
-        console.log(
-            `[REACTION XP] ${user.username} +${result.amount} XP`,
-        );
-
-        if (result.leveledUp) {
-            const channel = reaction.message.channel;
-
-            if (channel.isTextBased()) {
-                const embed = new EmbedBuilder()
-                    .setColor('#2ecc71')
-                    .setTitle("🐟 Окунь повысил уровень!")
-                    .setDescription(
-                        `<@${user.displayName}>\n\n` +
-                        `⭐ **${result.oldLevel} → ${result.newLevel}**`,
-                    );
-
-                await channel.send({
-                    embeds: [embed],
-                });
-            }
-        }
-    } catch (error) {
-        console.error(
-            "[REACTION XP] Error:",
-            error,
-        );
-    }
-});
+//
+// client.on("messageReactionAdd", async (reaction, user) => {
+//     if (user.bot) {
+//         return;
+//     }
+//
+//     try {
+//         if (reaction.partial) {
+//             await reaction.fetch();
+//         }
+//
+//         const guild = reaction.message.guild;
+//
+//         if (!guild) {
+//             return;
+//         }
+//
+//         const result = await giveXp(
+//             guild.id,
+//             user.id,
+//             "REACTION",
+//         );
+//
+//         if (!result) {
+//             return;
+//         }
+//
+//         console.log(
+//             `[REACTION XP] ${user.username} +${result.amount} XP`,
+//         );
+//
+//         if (!result.leveledUp) {
+//             return;
+//         }
+//
+//         const channel = reaction.message.channel;
+//
+//         if (!channel.isSendable()) {
+//             return;
+//         }
+//
+//         const embed = new EmbedBuilder()
+//             .setColor("#2ecc71")
+//             .setTitle("🐟 Окунь повысил уровень!")
+//             .setDescription(
+//                 `<@${user.id}>\n\n` +
+//                 `⭐ **${result.oldLevel} → ${result.newLevel}**`,
+//             );
+//
+//         await channel.send({
+//             embeds: [embed],
+//         });
+//     } catch (error) {
+//         console.error(
+//             "[REACTION XP] Error:",
+//             error,
+//         );
+//     }
+// });
 
 const shutdown = async (signal: string): Promise<void> => {
     console.info(`Получатель ${signal}; выключился.`);
