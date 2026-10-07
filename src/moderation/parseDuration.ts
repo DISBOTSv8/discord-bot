@@ -1,16 +1,19 @@
 export function parseDuration(
-    value: string | undefined,
+    value?: string | null,
 ): number | undefined {
     if (!value) {
         return undefined;
     }
 
     const normalized =
-        value.trim().toLowerCase();
+        value
+            .trim()
+            .toLowerCase()
+            .replace(",", ".");
 
     const match =
         normalized.match(
-            /^(\d+)\s*(s|sec|сек|m|min|мин|h|hour|ч|d|day|д)$/i,
+            /^(\d+(?:\.\d+)?)\s*(сек|секунда|секунды|секунд|секунду|s|мин|минута|минуты|минут|минуту|m|ч|час|часа|часов|часу|h|д|день|дня|дней|дн|d)$/iu,
         );
 
     if (!match) {
@@ -20,35 +23,75 @@ export function parseDuration(
     const amount =
         Number(match[1]);
 
-    const unit = match[2];
+    const unit =
+        match[2].toLowerCase();
 
-    const multipliers: Record<
-        string,
-        number
-    > = {
-        s: 1000,
-        sec: 1000,
-        сек: 1000,
-
-        m: 60 * 1000,
-        min: 60 * 1000,
-        мин: 60 * 1000,
-
-        h: 60 * 60 * 1000,
-        hour: 60 * 60 * 1000,
-        ч: 60 * 60 * 1000,
-
-        d: 24 * 60 * 60 * 1000,
-        day: 24 * 60 * 60 * 1000,
-        д: 24 * 60 * 60 * 1000,
-    };
-
-    const multiplier =
-        multipliers[unit];
-
-    if (!multiplier) {
+    if (
+        !Number.isFinite(amount) ||
+        amount <= 0
+    ) {
         return undefined;
     }
 
-    return amount * multiplier;
+    if (
+        [
+            "сек",
+            "секунда",
+            "секунды",
+            "секунд",
+            "секунду",
+            "s",
+        ].includes(unit)
+    ) {
+        return Math.round(
+            amount * 1000,
+        );
+    }
+
+    if (
+        [
+            "мин",
+            "минута",
+            "минуты",
+            "минут",
+            "минуту",
+            "m",
+        ].includes(unit)
+    ) {
+        return Math.round(
+            amount * 60_000,
+        );
+    }
+
+    if (
+        [
+            "ч",
+            "час",
+            "часа",
+            "часов",
+            "часу",
+            "h",
+        ].includes(unit)
+    ) {
+        return Math.round(
+            amount * 3_600_000,
+        );
+    }
+
+    if (
+        [
+            "д",
+            "день",
+            "дня",
+            "дней",
+            "дн",
+            "d",
+        ].includes(unit)
+    ) {
+        return Math.round(
+            amount * 86_400_000,
+        );
+    }
+
+    return undefined;
 }

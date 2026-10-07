@@ -6,170 +6,120 @@ import {
     MODERATION_ROLE_IDS,
 } from "../config/moderationRoles";
 
-import {
-    ModerationAction,
-} from "./moderationTypes";
-
-interface BotCommand {
-    action?: ModerationAction;
+interface CommandInfo {
     name: string;
     description: string;
-    examples: string[];
-    moderatorOnly: boolean;
+    moderation?: boolean;
 }
 
-const COMMANDS: BotCommand[] = [
+const COMMANDS: CommandInfo[] = [
     {
-        name: "Общение",
-        description: "Общаться с Гостом на обычные темы.",
-        examples: [
-            "Гост, как дела?",
-            "Гост, посоветуй фильм",
-        ],
-        moderatorOnly: false,
+        name: "/ping",
+        description: "Проверить, работает ли бот.",
     },
     {
-        name: "Шутка",
-        description: "Рассказать шутку.",
-        examples: [
-            "Гост, расскажи шутку",
-        ],
-        moderatorOnly: false,
+        name: "/help",
+        description: "Показать доступные команды.",
     },
     {
-        action: "warn",
-        name: "Предупреждение",
-        description: "Выдать участнику предупреждение.",
-        examples: [
-            "Гост, дай варнинг @Игроку",
-            "Гост, предупреди @Игрока за спам",
-        ],
-        moderatorOnly: true,
+        name: "/обновить_ник",
+        description: "Обновить свой ник.",
     },
     {
-        action: "timeout",
-        name: "Тайм-аут",
-        description: "Ограничить возможность писать участнику на время.",
-        examples: [
-            "Гост, замути @Игрока на 10 минут",
-        ],
-        moderatorOnly: true,
+        name: "/указать_ник",
+        description: "Указать свой ник.",
     },
     {
-        action: "untimeout",
-        name: "Снять тайм-аут",
-        description: "Снять ограничение с участника.",
-        examples: [
-            "Гост, размуть @Игрока",
-        ],
-        moderatorOnly: true,
+        name: "/joke",
+        description: "Получить шутку.",
     },
     {
-        action: "kick",
-        name: "Кик",
-        description: "Исключить участника с сервера.",
-        examples: [
-            "Гост, кикни @Игрока",
-        ],
-        moderatorOnly: true,
+        name: "warn",
+        description: "Выдать предупреждение участнику.",
+        moderation: true,
     },
     {
-        action: "ban",
-        name: "Бан",
-        description: "Заблокировать участника на сервере.",
-        examples: [
-            "Гост, забань @Игрока",
-        ],
-        moderatorOnly: true,
+        name: "timeout",
+        description: "Выдать тайм-аут участнику.",
+        moderation: true,
     },
     {
-        action: "unban",
-        name: "Разбан",
-        description: "Снять бан с пользователя.",
-        examples: [
-            "Гост, разбань пользователя",
-        ],
-        moderatorOnly: true,
+        name: "untimeout",
+        description: "Снять тайм-аут с участника.",
+        moderation: true,
     },
     {
-        action: "add_role",
-        name: "Выдать роль",
+        name: "kick",
+        description: "Кикнуть участника.",
+        moderation: true,
+    },
+    {
+        name: "ban",
+        description: "Забанить участника.",
+        moderation: true,
+    },
+    {
+        name: "unban",
+        description: "Разбанить участника.",
+        moderation: true,
+    },
+    {
+        name: "add_role",
         description: "Выдать участнику роль.",
-        examples: [
-            "Гост, выдай @Игроку роль Мемолог",
-        ],
-        moderatorOnly: true,
+        moderation: true,
     },
     {
-        action: "remove_role",
-        name: "Снять роль",
+        name: "remove_role",
         description: "Снять с участника роль.",
-        examples: [
-            "Гост, сними с @Игрока роль Мемолог",
-        ],
-        moderatorOnly: true,
+        moderation: true,
     },
     {
-        action: "nickname",
-        name: "Изменение ника",
+        name: "nickname",
         description: "Изменить ник участника.",
-        examples: [
-            "Гост, поставь @Игроку ник Батя",
-        ],
-        moderatorOnly: true,
+        moderation: true,
     },
     {
-        action: "mention",
-        name: "Упоминание",
+        name: "mention",
         description: "Упомянуть участника.",
-        examples: [
-            "Гост, тегни @Игрока",
-        ],
-        moderatorOnly: true,
+        moderation: true,
     },
     {
-        action: "mute_voice",
-        name: "Мут в голосовом канале",
-        description: "Выключить микрофон участнику в голосовом канале.",
-        examples: [
-            "Гост, замути @Игрока в голосе",
-        ],
-        moderatorOnly: true,
+        name: "mute_voice",
+        description: "Замутить участника в голосовом канале.",
+        moderation: true,
     },
 ];
 
-export function getAvailableCommands(
+export function getAvailableCommandsPrompt(
     member: GuildMember,
-): BotCommand[] {
-    const canModerate =
+): string {
+    const isModerator =
         member.roles.cache.some(
-            (role) =>
+            role =>
                 MODERATION_ROLE_IDS.includes(
                     role.id,
                 ),
         );
 
-    return COMMANDS.filter(
-        (command) =>
-            !command.moderatorOnly ||
-            canModerate,
-    );
+    const availableCommands =
+        COMMANDS.filter(
+            command =>
+                !command.moderation ||
+                isModerator,
+        );
+
+    if (!availableCommands.length) {
+        return "Доступных команд нет.";
+    }
+
+    return availableCommands
+        .map(
+            command =>
+                `${command.name} — ${command.description}`,
+        )
+        .join("\n");
 }
 
-export function getAvailableCommandsPrompt(
-    member: GuildMember,
-): string {
-    const commands =
-        getAvailableCommands(member);
-
-    return commands
-        .map(
-            (command) =>
-                [
-                    `Команда: ${command.name}`,
-                    `Описание: ${command.description}`,
-                    `Примеры: ${command.examples.join("; ")}`,
-                ].join("\n"),
-        )
-        .join("\n\n");
+export function getAllCommands(): CommandInfo[] {
+    return COMMANDS;
 }

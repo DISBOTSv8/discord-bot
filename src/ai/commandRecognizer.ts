@@ -19,12 +19,10 @@ const openai =
     });
 
 const COMMAND_PROMPT = `
-Ты — распознаватель команд Discord-бота Ghost.
-
-Твоя задача — определить намерение пользователя.
+Ты — распознаватель команд Discord-бота Гост.
 
 Ты НЕ выполняешь команды.
-Ты только возвращаешь JSON.
+Ты только определяешь намерение пользователя и возвращаешь JSON.
 
 Доступные действия:
 
@@ -38,199 +36,156 @@ add_role
 remove_role
 nickname
 mention
+mute_voice
 
-Есть два типа намерения:
+Типы намерения:
 
-1. execute
+execute
+check_capability
 
-Пользователь действительно хочет, чтобы команда была выполнена.
-
-Примеры:
-
-"замути @Tom на 10 минут"
-"кикни @Tom"
-"забань @Tom"
-"предупреди @Tom за спам"
-"выдай @Tom роль Мемолог"
-"поставь @Tom ник Батя"
-"тегни @Tom"
-
-2. check_capability
-
-Пользователь только спрашивает, может ли Ghost выполнить такую команду.
-
-Примеры:
-
-"можешь дать варнинг?"
-"Гост, можешь дать варнинг?"
-"ты можешь дать варнинг?"
-"умеешь давать варнинги?"
+Если пользователь спрашивает:
 "можешь забанить?"
-"ты умеешь банить?"
-"а можешь замутить?"
-"можешь выдать роль?"
+"умеешь мутить?"
+"ты можешь дать варнинг?"
 
-ВАЖНО:
+это check_capability.
 
-Если пользователь спрашивает "можешь", "умеешь", "способен ли",
-"ты можешь", "а можешь" и подобными словами,
-это check_capability, а НЕ execute.
+Если пользователь реально просит выполнить действие:
+"забань Тома"
+"замути @Tom на 10 минут"
+"гост дай ему мут"
 
-В таком случае targetUserId должен быть null,
-потому что действие выполнять не нужно.
+это execute.
+
+ПРАВИЛА ОПРЕДЕЛЕНИЯ ЦЕЛИ:
+
+1. Если цель указана через Discord mention,
+используй ID из mentionedUserIds.
+
+2. Никогда не придумывай Discord ID.
+
+3. Если цель названа конкретным именем или ником,
+запиши это имя буквально в targetQuery.
 
 Например:
 
-"можешь дать варнинг?"
-=>
+"забань Тома"
 
-{
-    "command": {
-        "intent": "check_capability",
-        "action": "warn",
-        "targetUserId": null,
-        "duration": null,
-        "roleName": null,
-        "nickname": null,
-        "reason": null,
-        "mentionTarget": false
-    }
-}
+targetUserId = null
+targetQuery = "Тома"
 
-Но:
+4. Если пользователь использует:
+"он"
+"его"
+"ему"
+"она"
+"её"
+"ей"
+"этого"
+"этого типа"
+"этого человека"
+"ему мут"
+"дай ему мут"
 
-"дай варнинг @Tom"
-=>
+используй recentMessages и repliedTo.
 
-{
-    "command": {
-        "intent": "execute",
-        "action": "warn",
-        "targetUserId": "123456",
-        "duration": null,
-        "roleName": null,
-        "nickname": null,
-        "reason": null,
-        "mentionTarget": false
-    }
-}
+5. В recentMessages сообщения имеют формат:
 
-Правила:
+Имя [DISCORD_ID]: текст
 
-1. Никогда не придумывай ID пользователя.
+Например:
 
-2. Используй только ID из mentionedUserIds.
+FXCUS [123456789]: Я Никитос
+KINGSLAYER [987654321]: гост дай ему мут на минуту
 
-3. Если пользователя нет в mentionedUserIds,
-targetUserId должен быть null.
+Если из контекста однозначно понятно,
+что "ему" относится к FXCUS,
+верни:
 
-4. Если intent = check_capability,
-targetUserId ВСЕГДА должен быть null.
+targetUserId = "123456789"
 
-5. Если пользователь говорит "тегни его",
-установи mentionTarget=true.
+6. Если человек ранее явно связал свой ник с именем:
 
-6. Для роли используй название роли в roleName.
+"FXCUS = Никитос"
+"Я FXCUS, но зовите меня Никитосом"
+"FXCUS это Никитос"
 
-7. Для ника используй nickname.
+то в последующих командах:
 
-8. Для причины используй reason.
+"замути Никитоса"
+"забань Никитоса"
+"дай ему мут"
 
-9. Для timeout используй duration.
+можно использовать ID FXCUS,
+если контекст однозначный.
 
-10. Если сообщение является обычным разговором
-и не относится к доступным действиям,
-верни command=null.
+7. Не используй ID автора текущей команды
+как targetUserId только потому,
+что он написал команду.
+
+8. Если цель не может быть определена однозначно:
+
+targetUserId = null
+targetQuery = null
+
+9. Если цель может быть определена по recentMessages,
+приоритет у targetUserId.
+
+10. Не придумывай Discord ID.
+Используй только ID, которые реально присутствуют
+в mentionedUserIds, repliedTo или recentMessages.
+
+11. Для timeout обязательно извлекай duration.
 
 Примеры:
 
-"замути @Tom на 10 минут"
-=>
+"на минуту"
+duration = "1 минута"
+
+"на 5 минут"
+duration = "5 минут"
+
+"на 30 секунд"
+duration = "30 секунд"
+
+"на час"
+duration = "1 час"
+
+"на 2 часа"
+duration = "2 часа"
+
+12. Для роли используй roleName.
+
+13. Для ника используй nickname.
+
+14. Для причины используй reason.
+
+15. Для "тегни его" используй mentionTarget=true.
+
+16. Обычный разговор возвращай как:
+
+{
+    "command": null
+}
+
+ВАЖНО:
+
+Не выполняй действие.
+Не придумывай пользователя.
+Не придумывай Discord ID.
+Не выбирай пользователя случайно.
+Если контекст однозначно указывает на конкретного пользователя,
+используй его реальный Discord ID.
+
+Формат ответа ВСЕГДА:
 
 {
     "command": {
         "intent": "execute",
         "action": "timeout",
-        "targetUserId": "ID_TOM",
-        "duration": "10m",
-        "roleName": null,
-        "nickname": null,
-        "reason": null,
-        "mentionTarget": false
-    }
-}
-
-"сними мут с @Tom"
-=>
-execute + untimeout
-
-"кикни @Tom"
-=>
-execute + kick
-
-"забань @Tom"
-=>
-execute + ban
-
-"сними бан с @Tom"
-=>
-execute + unban
-
-"предупреди @Tom за спам"
-=>
-execute + warn
-
-"выдай @Tom роль Мемолог"
-=>
-execute + add_role
-
-"сними с @Tom роль Мемолог"
-=>
-execute + remove_role
-
-"поставь @Tom ник Батя"
-=>
-execute + nickname
-
-"тегни @Tom"
-=>
-execute + mention
-
-"замути @Tom на 10 минут и тегни его"
-=>
-execute + timeout + mentionTarget=true
-
-"можешь дать варнинг?"
-=>
-check_capability + warn
-
-"можешь дать варнинг @Tom?"
-=>
-check_capability + warn
-
-"ты можешь забанить @Tom?"
-=>
-check_capability + ban
-
-"умеешь мутить?"
-=>
-check_capability + timeout
-
-"можешь выдать роль?"
-=>
-check_capability + add_role
-
-Если пользователь спрашивает о возможности команды,
-не превращай вопрос в выполнение команды.
-
-Формат ответа ВСЕГДА только JSON:
-
-{
-    "command": {
-        "intent": "execute",
-        "action": "warn",
-        "targetUserId": "123456",
-        "duration": null,
+        "targetUserId": "123456789",
+        "targetQuery": null,
+        "duration": "1 минута",
         "roleName": null,
         "nickname": null,
         "reason": null,
@@ -245,9 +200,53 @@ check_capability + add_role
 }
 `;
 
+interface RecognizerResponse {
+    command:
+        | {
+        intent:
+            ParsedCommand["intent"];
+
+        action:
+            ParsedCommand["action"];
+
+        targetUserId:
+            string | null;
+
+        targetQuery?:
+            string | null;
+
+        duration?:
+            string | null;
+
+        roleName?:
+            string | null;
+
+        nickname?:
+            string | null;
+
+        reason?:
+            string | null;
+
+        mentionTarget?:
+            boolean;
+    }
+        | null;
+}
+
+interface RecognizeContext {
+    mentionedUserIds: string[];
+
+    repliedTo?: {
+        id: string;
+        displayName: string;
+    };
+
+    recentMessages?: string;
+}
+
 export async function recognizeCommand(
     message: string,
-    mentionedUserIds: string[],
+    context: RecognizeContext,
 ): Promise<ParsedCommand | null> {
     const response =
         await openai.responses.create({
@@ -260,10 +259,18 @@ export async function recognizeCommand(
                 },
                 {
                     role: "user",
-                    content: JSON.stringify({
-                        message,
-                        mentionedUserIds,
-                    }),
+                    content:
+                        JSON.stringify({
+                            message,
+                            mentionedUserIds:
+                            context.mentionedUserIds,
+                            repliedTo:
+                                context.repliedTo ??
+                                null,
+                            recentMessages:
+                                context.recentMessages ??
+                                null,
+                        }),
                 },
             ],
         });
@@ -277,34 +284,9 @@ export async function recognizeCommand(
 
     try {
         const result =
-            JSON.parse(text) as {
-                command:
-                    | {
-                    intent:
-                        ParsedCommand["intent"];
-
-                    action:
-                        ParsedCommand["action"];
-
-                    targetUserId:
-                        string | null;
-
-                    duration?: string | null;
-
-                    roleName?:
-                        string | null;
-
-                    nickname?:
-                        string | null;
-
-                    reason?:
-                        string | null;
-
-                    mentionTarget?:
-                        boolean;
-                }
-                    | null;
-            };
+            JSON.parse(
+                text,
+            ) as RecognizerResponse;
 
         if (!result.command) {
             return null;
@@ -324,8 +306,9 @@ export async function recognizeCommand(
 
         if (
             command.targetUserId &&
-            !mentionedUserIds.includes(
+            !isKnownUserId(
                 command.targetUserId,
+                context,
             )
         ) {
             return null;
@@ -336,14 +319,17 @@ export async function recognizeCommand(
             "check_capability"
         ) {
             return {
+                intent:
+                    "check_capability",
+
                 action:
                 command.action,
 
                 targetUserId:
                     null,
 
-                intent:
-                    "check_capability",
+                targetQuery:
+                undefined,
 
                 durationMs:
                 undefined,
@@ -366,14 +352,18 @@ export async function recognizeCommand(
         }
 
         return {
+            intent:
+                "execute",
+
             action:
             command.action,
 
             targetUserId:
             command.targetUserId,
 
-            intent:
-                "execute",
+            targetQuery:
+                command.targetQuery ??
+                undefined,
 
             durationMs:
                 parseDuration(
@@ -405,4 +395,31 @@ export async function recognizeCommand(
 
         return null;
     }
+}
+
+function isKnownUserId(
+    targetUserId: string,
+    context: RecognizeContext,
+): boolean {
+    if (
+        context.mentionedUserIds.includes(
+            targetUserId,
+        )
+    ) {
+        return true;
+    }
+
+    if (
+        context.repliedTo?.id ===
+        targetUserId
+    ) {
+        return true;
+    }
+
+    const recentMessages =
+        context.recentMessages ?? "";
+
+    return recentMessages.includes(
+        `[${targetUserId}]`,
+    );
 }
