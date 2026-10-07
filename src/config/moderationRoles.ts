@@ -1,0 +1,7 @@
+export const MODERATION_ROLES = {
+    MODERATOR: "1554909361493770352",
+};
+
+export const MODERATION_ROLE_IDS: string[] = [
+    MODERATION_ROLES.MODERATOR,
+];
